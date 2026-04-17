@@ -1,0 +1,7 @@
+.agents/
+.idea/
+models/
+venv/
+*.md
+temp_voice.wav
+trollexa.db

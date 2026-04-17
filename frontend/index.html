@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trollexa - Find Your Products</title>
+    <!-- Offline Bootstrap -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <!-- Shared CSS Sheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    
+    <!-- Top Nav -->
+    <div class="top-nav d-flex justify-content-between align-items-center">
+        <a href="index.html" class="trollexa-logo"><img src="images/logo.png" alt="Trollexa" class="logo-nav"></a>
+        <button class="btn bg-white position-relative rounded px-3 py-1 d-flex align-items-center gap-2 top-nav-cart-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
+            <i class="icon icon-cart"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container text-center main-hero">
+        <div class="mb-4"><img src="images/logo.png" alt="Trollexa" class="logo-main"></div>
+        
+        <div class="search-container">
+            <!-- Search Bar -->
+            <div class="search-input-wrapper bg-white w-100">
+                <i class="icon icon-search icon-muted"></i>
+                <input type="text" id="searchInput" placeholder="Search products in supermarket...">
+                <button class="icon-btn mic" id="voiceSearchBtn" title="Search by Voice">
+                    <i class="icon icon-mic"></i>
+                </button>
+                <button class="icon-btn" id="cameraSearchBtn" title="Identify Product">
+                    <i class="icon icon-camera"></i>
+                </button>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="mt-4">
+                <button class="action-btn" id="textSearchBtn">Trollexa Search</button>
+                <button class="action-btn" data-bs-toggle="modal" data-bs-target="#categoriesModal">Browse Categories</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Modal (Standard) -->
+    <div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Store Categories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pb-4">
+                    <!-- Changed to a Bootstrap Row to support Grid Layout of Square Boxes -->
+                    <div class="row g-3 px-3" id="categoriesList">
+                        <!-- Filled organically via javascript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice Rec Modal (Full Screen Layout) -->
+    <div class="modal fade" id="voiceModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen-custom">
+            <div class="modal-content">
+                <!-- Header block -->
+                <div class="d-flex align-items-center justify-content-between p-4 border-bottom">
+                    <a href="#" class="back-link d-flex align-items-center gap-2" data-bs-dismiss="modal">
+                        <i class="icon icon-arrow-back" style="width:20px; height:20px;"></i> Back
+                    </a>
+                    <span><img src="images/logo.png" alt="Trollexa" class="logo-modal"></span>
+                    <span style="width: 50px;"></span><!-- spacer -->
+                </div>
+                
+                <div class="modal-body d-flex flex-column align-items-center pt-5">
+                    <h2 class="mb-5 title-dark">Voice Search</h2>
+                    
+                    <div class="voice-mic-circle mb-4" id="voiceMicIcon">
+                        <i class="icon icon-mic icon-large"></i>
+                    </div>
+                    
+                    <h4 class="mb-4 text-muted" id="voiceStatus">Listening...</h4>
+                    
+                    <div id="voiceResultCard" class="voice-card w-100 d-none text-center">
+                        <p class="mb-2 text-muted">Here's what we heard:</p>
+                        <p class="fs-4 mb-4" id="voiceResultText" style="color: #d93025;"></p>
+                        <button class="btn btn-primary w-100 rounded-pill py-2 mb-3 fw-bold fs-5" id="voiceConfirmBtn">Search</button>
+                        <a href="#" class="text-muted text-decoration-underline" id="voiceRetryBtn">Try again</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal (Full Screen Layout) -->
+    <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen-custom">
+            <div class="modal-content bg-white">
+                <!-- Dark Header -->
+                <div class="camera-header d-flex align-items-center justify-content-between">
+                    <a href="#" class="text-white text-decoration-none d-flex align-items-center gap-2" data-bs-dismiss="modal" id="cameraCloseBtn">
+                        <i class="icon icon-arrow-back" style="width:20px; height:20px;"></i> Back
+                    </a>
+                    <span class="fs-5 fw-bold text-white">Camera Search</span>
+                    <span style="width: 50px;"></span>
+                </div>
+                
+                <div class="modal-body p-0 text-center">
+                    <div class="camera-viewport position-relative">
+                        <!-- AI Preloader (Constrained to camera-viewport) -->
+                        <div id="cameraPreloader" class="d-flex flex-column justify-content-center align-items-center position-absolute top-0 start-0 w-100 h-100 z-3" style="background: #000;">
+                            <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem; border-width: 0.3rem;"></div>
+                            <h4 class="text-white mt-4 fw-bold">Starting Camera...</h4>
+                            <p class="text-white mt-2">Connecting to Edge Vision Hub</p>
+                        </div>
+                        
+                        <!-- MJPEG Stream -->
+                        <img id="liveVideo" class="w-100 h-100 camera-feed d-none" alt="Camera Signal"></img>
+
+                        <!-- Detected items pop up as stacked floating pills -->
+                        <div id="liveDetectionsList" class="live-detections-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Shopping Cart</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-group list-group-flush" id="cartItemList"></ul>
+                    <h4 class="mt-4 text-end fw-bold text-primary">Total: AED <span id="cartTotalSum">0.00</span></h4>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4" id="checkoutBtn">Fake Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
