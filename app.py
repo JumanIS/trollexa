@@ -477,6 +477,7 @@ import subprocess
 def exit_kiosk():
     # Kills the browser process from the backend
     os.system("pkill x-www-browser")
+    os.system("pkill chromium")
     return "Closing..."
 
 def launch_kiosk():
