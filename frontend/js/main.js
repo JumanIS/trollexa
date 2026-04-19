@@ -29,6 +29,10 @@ $(document).ready(function () {
     if ($('#resultsList').length > 0) {
         loadSearchResults();
     }
+
+    if ($('#exitKioskBtn').click(function() {
+        window.close();
+    }))
     
     // Always initialize cart state globally immediately
     updateCartUI();
