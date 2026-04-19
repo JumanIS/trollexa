@@ -31,7 +31,13 @@ $(document).ready(function () {
     }
 
     if ($('#exitKioskBtn').click(function() {
-        window.close();
+
+        $.ajax({
+                url: '/api/exit-kiosk',
+                type: 'GET',
+                success: function(resp) {
+                }
+            });
     }))
     
     // Always initialize cart state globally immediately

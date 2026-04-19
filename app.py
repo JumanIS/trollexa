@@ -473,6 +473,12 @@ def get_route():
 
 import subprocess
 
+@app.route('/api/exit-kiosk')
+def exit_kiosk():
+    # Kills the browser process from the backend
+    os.system("pkill x-www-browser")
+    return "Closing..."
+
 def launch_kiosk():
     url = "http://localhost:5000/"
     # Create a copy of the current system environment variables
