@@ -471,12 +471,31 @@ def get_route():
 
     return Response(generate(), mimetype='text/event-stream')
 
+import subprocess
+
+def launch_kiosk():
+    # Launches Chromium in full-screen kiosk mode on the Pi
+    try:
+        subprocess.Popen(['chromium-browser', '--kiosk', 'http://localhost:5000/'])
+    except Exception as e:
+        print(f"Could not launch browser: {e}")
 
 if __name__ == '__main__':
     # Fire up background BLE scanner routine
     threading.Thread(target=start_ble_scanner, daemon=True).start()
     
-    # Automatically open local browser using threading timer
-    threading.Timer(1.5, lambda: webbrowser.open("http://localhost:5000/")).start()
+    # Automatically open local browser in Kiosk mode
+    threading.Timer(1.5, launch_kiosk).start()
+    
     # Running offline mode for Trollexa API Hub
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+
+
+# if __name__ == '__main__':
+#     # Fire up background BLE scanner routine
+#     threading.Thread(target=start_ble_scanner, daemon=True).start()
+    
+#     # Automatically open local browser using threading timer
+#     threading.Timer(1.5, lambda: webbrowser.open("http://localhost:5000/")).start()
+#     # Running offline mode for Trollexa API Hub
+#     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
