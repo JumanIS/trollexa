@@ -17,16 +17,25 @@
             <a href="index.html" class="trollexa-logo me-4"><img src="images/logo.png" alt="Trollexa" class="logo-nav"></a>
             <div class="search-input-wrapper bg-white">
                 <input type="text" id="searchInput" placeholder="Search products...">
+                <button class="icon-btn mic" id="voiceSearchBtnRedirect" title="Search by Voice">
+                    <i class="icon icon-mic"></i>
+                </button>
+                <button class="icon-btn" id="cameraSearchBtnRedirect" title="Identify Product">
+                    <i class="icon icon-camera"></i>
+                </button>
                 <button class="search-btn-blue" id="textSearchBtn">
                     <i class="icon icon-search search-icon-white"></i>
                 </button>
             </div>
         </div>
         
-        <button class="btn bg-white position-relative rounded px-3 py-1 d-flex align-items-center gap-2 top-nav-cart-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
-            <i class="icon icon-cart"></i>
-            <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <a href="manager.html" class="btn bg-white rounded px-3 py-1 fw-bold text-primary border" id="adminToolLinkResults">Admin</a>
+            <button class="btn bg-white position-relative rounded px-3 py-1 d-flex align-items-center gap-2 top-nav-cart-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
+                <i class="icon icon-cart"></i>
+                <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
+            </button>
+        </div>
     </div>
 
     <!-- Category Sub-Nav Wrapper -->
@@ -85,7 +94,7 @@
                 </div>
                 <div class="modal-body">
                     <ul class="list-group list-group-flush" id="cartItemList"></ul>
-                    <h4 class="mt-4 text-end fw-bold text-primary">Total: $<span id="cartTotalSum">0.00</span></h4>
+                    <h4 class="mt-4 text-end fw-bold text-primary">Total: <span id="cartTotalSum">0.00</span> AED</h4>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>

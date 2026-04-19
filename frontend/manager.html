@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trollexa - Store Manager (Admin Tool)</title>
+    <!-- Offline Bootstrap -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <!-- Shared Unified CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Removed inline styles matching user request, moved to style.css -->
+</head>
+<body>
+    
+    <!-- Top Nav App Bar -->
+    <div class="top-nav d-flex justify-content-between align-items-center bg-white border-bottom shadow-sm">
+        <a href="index.html" class="trollexa-logo me-4"><img src="images/logo.png" alt="Trollexa" class="logo-nav"></a>
+        <div class="fw-bold fs-5 text-dark">Store Layout Manager</div>
+        <div>
+            <a href="index.html" class="btn btn-outline-secondary btn-sm">Exit Admin</a>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="manager-container">
+        
+        <!-- Sidebar Tools -->
+        <div class="manager-sidebar shadow-sm">
+            <h5>Tools</h5>
+            <p class="text-muted small">Draw new shelves on the canvas. Click to select, drag to move, and hit "Delete" on your keyboard to remove a selected shelf.</p>
+            <!-- Removed generic action buttons since drawing is default -->
+            
+            <hr>
+            
+            <h5>Store Setup</h5>
+            <div class="mb-3">
+                <label>Dimensions (WxH) in meters:</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="number" id="dimW" class="form-control" value="6" min="1"> x
+                    <input type="number" id="dimH" class="form-control" value="6" min="1">
+                </div>
+            </div>
+            <button class="btn btn-secondary w-100 mb-3" id="applyDimBtn">Apply Dimensions</button>
+            
+            <div class="mt-auto">
+                <button class="btn btn-success w-100 fw-bold py-2" id="saveLayoutBtn">Save Layout to DB</button>
+            </div>
+            
+        </div>
+        
+        <!-- Drawing Area -->
+        <div class="canvas-area">
+            <div class="svg-wrapper" id="svgWrapper" style="width: 600px; height: 600px;">
+                <svg id="storeCanvas" viewBox="0 0 6 6" preserveAspectRatio="none">
+                    <defs>
+                        <pattern id="gridPattern" width="1" height="1" patternUnits="userSpaceOnUse">
+                            <circle cx="0.5" cy="0.5" r="0.05" />
+                        </pattern>
+                    </defs>
+                    <rect id="bgGrid" width="6" height="6" fill="url(#gridPattern)" />
+                    <!-- Shelves Group -->
+                    <g id="shelvesGroup"></g>
+                </svg>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Dimension Prompt Modal -->
+    <div class="modal fade" id="dimModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Store Dimensions Setup</h5>
+                </div>
+                <div class="modal-body pb-4">
+                    <p class="mb-3 text-muted">Please enter your physical store dimensions in meters to calibrate the canvas bounds.</p>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <input type="number" id="modalDimW" class="form-control" value="6" min="1" placeholder="Length (m)">
+                        <span class="text-muted fw-bold">X</span>
+                        <input type="number" id="modalDimH" class="form-control" value="6" min="1" placeholder="Width (m)">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-primary w-100 rounded-pill fw-bold" id="modalDimSaveBtn">Set Dimensions</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Generic Message Modal -->
+    <div class="modal fade" id="msgModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center py-4">
+                    <div id="msgModalIcon" class="mb-3 text-success"><img src="icons/check.svg" style="width: 48px; height: 48px;"></div>
+                    <h5 class="fw-bold mb-2" id="msgModalTitle">Success</h5>
+                    <p class="text-muted mb-4" id="msgModalText">Saved successfully.</p>
+                    <button class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+
+    <script src="js/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let storeW = 6;
+            let storeH = 6;
+            let shelves = [];
+            let isDrawing = false;
+            let startPoint = null;
+            let currentTempRect = null;
+            let selectedShelfIndex = null;
+            
+            let isDragging = false;
+            let dragOffset = null;
+
+            // 1. Initial Prompt for dimensions using Modal
+            setTimeout(() => {
+                $('#dimModal').modal('show');
+            }, 100);
+
+            $('#modalDimSaveBtn').click(function() {
+                let w = parseFloat($('#modalDimW').val());
+                let h = parseFloat($('#modalDimH').val());
+                if(w > 0 && h > 0) {
+                    storeW = w;
+                    storeH = h;
+                    $('#dimW').val(storeW);
+                    $('#dimH').val(storeH);
+                    applyDimensions();
+                    $('#dimModal').modal('hide');
+                }
+            });
+
+            function applyDimensions() {
+                storeW = parseFloat($('#dimW').val());
+                storeH = parseFloat($('#dimH').val());
+                
+                // Update SVG viewBox and sizes
+                const svg = document.getElementById('storeCanvas');
+                svg.setAttribute('viewBox', `0 0 ${storeW} ${storeH}`);
+                document.getElementById('bgGrid').setAttribute('width', storeW);
+                document.getElementById('bgGrid').setAttribute('height', storeH);
+                
+                // Adjust physical wrapper aspect ratio to reflect reality (scaling max to fit window)
+                let maxDim = 800; // max px
+                if (storeW >= storeH) {
+                    $('#svgWrapper').css('width', Math.min(($(window).width()-350), 800) + 'px');
+                    $('#svgWrapper').css('height', ($('#svgWrapper').width() * (storeH / storeW)) + 'px');
+                } else {
+                    $('#svgWrapper').css('height', Math.min(($(window).height()-120), 800) + 'px');
+                    $('#svgWrapper').css('width', ($('#svgWrapper').height() * (storeW / storeH)) + 'px');
+                }
+            }
+
+            $('#applyDimBtn').click(applyDimensions);
+            $(window).resize(applyDimensions); // Re-calculate wrap box responsive logic
+
+            // SVG Coordinate Helper
+            function getMouseCoords(e) {
+                const svg = document.getElementById('storeCanvas');
+                const pt = svg.createSVGPoint();
+                pt.x = e.clientX;
+                pt.y = e.clientY;
+                const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                return { x: svgP.x, y: svgP.y };
+            }
+
+            // Draw / Select Logic
+            const svgEl = document.getElementById('storeCanvas');
+            
+            $(svgEl).on('mousedown', function(e) {
+                let target = $(e.target);
+                
+                // Clicking an existing shelf targets selection/dragging
+                if (target.hasClass('shelf')) {
+                    selectedShelfIndex = parseInt(target.attr('data-index'));
+                    renderShelves();
+                    
+                    isDragging = true;
+                    const mouseP = getMouseCoords(e);
+                    dragOffset = {
+                        x: mouseP.x - shelves[selectedShelfIndex].x,
+                        y: mouseP.y - shelves[selectedShelfIndex].y
+                    };
+                    return;
+                }
+
+                // Otherwise, Start Drawing
+                selectedShelfIndex = null;
+                renderShelves();
+                
+                isDrawing = true;
+                startPoint = getMouseCoords(e);
+                
+                currentTempRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                currentTempRect.setAttribute('x', startPoint.x);
+                currentTempRect.setAttribute('y', startPoint.y);
+                currentTempRect.setAttribute('width', 0);
+                currentTempRect.setAttribute('height', 0);
+                currentTempRect.setAttribute('class', 'shelf');
+                document.getElementById('shelvesGroup').appendChild(currentTempRect);
+            });
+
+            $(document).on('mousemove', function(e) {
+                const p = getMouseCoords(e);
+                
+                if (isDrawing && currentTempRect) {
+                    let w = Math.abs(p.x - startPoint.x);
+                    let h = Math.abs(p.y - startPoint.y);
+                    let x = Math.min(p.x, startPoint.x);
+                    let y = Math.min(p.y, startPoint.y);
+                    
+                    currentTempRect.setAttribute('x', x);
+                    currentTempRect.setAttribute('y', y);
+                    currentTempRect.setAttribute('width', w);
+                    currentTempRect.setAttribute('height', h);
+                }
+                
+                if (isDragging && selectedShelfIndex !== null) {
+                    let newX = Math.max(0, p.x - dragOffset.x);
+                    let newY = Math.max(0, p.y - dragOffset.y);
+                    // clamp
+                    newX = Math.min(newX, storeW - shelves[selectedShelfIndex].w);
+                    newY = Math.min(newY, storeH - shelves[selectedShelfIndex].h);
+                    
+                    shelves[selectedShelfIndex].x = newX;
+                    shelves[selectedShelfIndex].y = newY;
+                    renderShelves();
+                }
+            });
+
+            $(document).on('mouseup', function(e) {
+                if (isDrawing) {
+                    isDrawing = false;
+                    const p = getMouseCoords(e);
+                    
+                    let w = Math.abs(p.x - startPoint.x);
+                    let h = Math.abs(p.y - startPoint.y);
+                    let x = Math.min(p.x, startPoint.x);
+                    let y = Math.min(p.y, startPoint.y);
+                    
+                    if (w > 0.1 && h > 0.1) {
+                        shelves.push({x, y, w, h});
+                    }
+                    
+                    if (currentTempRect && currentTempRect.parentNode) {
+                        currentTempRect.parentNode.removeChild(currentTempRect);
+                    }
+                    currentTempRect = null;
+                    renderShelves();
+                }
+                
+                if (isDragging) {
+                    isDragging = false;
+                }
+            });
+
+            // Keyboard delete
+            $(document).keydown(function(e) {
+                if (e.key === "Delete" || e.key === "Backspace") {
+                    deleteSelectedShelf();
+                }
+            });
+            
+            function deleteSelectedShelf() {
+                if (selectedShelfIndex !== null) {
+                    shelves.splice(selectedShelfIndex, 1);
+                    selectedShelfIndex = null;
+                    renderShelves();
+                }
+            }
+
+            function renderShelves() {
+                const group = document.getElementById('shelvesGroup');
+                $(group).empty();
+                
+                shelves.forEach((s, i) => {
+                    let rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', s.x);
+                    rect.setAttribute('y', s.y);
+                    rect.setAttribute('width', s.w);
+                    rect.setAttribute('height', s.h);
+                    rect.setAttribute('rx', '0.05');
+                    rect.setAttribute('class', i === selectedShelfIndex ? 'shelf selected' : 'shelf');
+                    rect.setAttribute('data-index', i);
+                    
+                    let text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', s.x + (s.w / 2));
+                    text.setAttribute('y', s.y + (s.h / 2) + 0.05);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('fill', '#1a73e8');
+                    text.setAttribute('font-size', '0.15');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('pointer-events', 'none'); // let clicks pass to rect
+                    text.textContent = `Shelf ${i+1}`;
+                    
+                    group.appendChild(rect);
+                    group.appendChild(text);
+                    
+                    // Add SVG Trash Icon directly to the top-right corner of the selected shelf
+                    if (selectedShelfIndex === i) {
+                        let trash = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                        trash.setAttribute('href', 'icons/trash.svg');
+                        // Position slightly inside the shelf's top-right
+                        trash.setAttribute('x', s.x + s.w - 0.3);
+                        trash.setAttribute('y', s.y + 0.05);
+                        trash.setAttribute('width', '0.25');
+                        trash.setAttribute('height', '0.25');
+                        trash.setAttribute('cursor', 'pointer');
+                        trash.setAttribute('class', 'shelf-trash');
+                        
+                        // Delete click handler
+                        trash.addEventListener('mousedown', function(e) {
+                            e.stopPropagation(); // Avoid triggering drag or background
+                            deleteSelectedShelf();
+                        });
+                        
+                        group.appendChild(trash);
+                    }
+                });
+            }
+
+            // Fetch initial layout logic to pre-fill admin panel
+            $.ajax({
+                url: '/api/search', // A quick way to get existing shelves layout in the current setup
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ query: '' }),
+                success: function(resp) {
+                    if(resp.shelves && resp.shelves.length > 0) {
+                        // Normalize positions if necessary or load as is
+                        shelves = resp.shelves;
+                        renderShelves();
+                    }
+                }
+            });
+
+            $('#saveLayoutBtn').click(function() {
+                const btn = $(this);
+                const originalText = btn.text();
+                btn.prop('disabled', true).text('Saving...');
+                
+                $.ajax({
+                    url: '/api/save-layout',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ shelves: shelves }),
+                    success: function(resp) {
+                        $('#msgModalIcon').html('<img src="icons/check.svg" style="width: 48px; height: 48px;">').removeClass('text-danger').addClass('text-success');
+                        $('#msgModalTitle').text('Success');
+                        $('#msgModalText').text('Store Layout Saved Successfully!');
+                        $('#msgModal').modal('show');
+                        btn.prop('disabled', false).text(originalText);
+                    },
+                    error: function(err) {
+                        $('#msgModalIcon').html('<i class="icon icon-remove text-danger" style="width: 48px; height: 48px; display:inline-block; background-color:currentColor;"></i>').removeClass('text-success').addClass('text-danger');
+                        $('#msgModalTitle').text('Error');
+                        $('#msgModalText').text('Failed to save layout.');
+                        $('#msgModal').modal('show');
+                        btn.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>

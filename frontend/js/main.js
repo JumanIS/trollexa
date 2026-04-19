@@ -34,9 +34,6 @@ $(document).ready(function () {
     updateCartUI();
 });
 
-/**
- * Global events like text search that exist on every page's navbar
- */
 function setupGlobalEvents() {
     $('#textSearchBtn').click(() => {
         const q = $('#searchInput').val().trim();
@@ -46,6 +43,19 @@ function setupGlobalEvents() {
     $('#searchInput').keypress(function (e) {
         if (e.which === 13) $('#textSearchBtn').click();
     });
+
+    // Redirections from results.html
+    $('#voiceSearchBtnRedirect').click(function() {
+        window.location.href = 'index.html?action=voice';
+    });
+    $('#cameraSearchBtnRedirect').click(function() {
+        window.location.href = 'index.html?action=camera';
+    });
+
+    // Toast Container for success messages
+    if ($('#toastContainer').length === 0) {
+        $('body').append('<div id="toastContainer" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center;"></div>');
+    }
 }
 
 
@@ -88,13 +98,6 @@ function loadSubNavCategories() {
     $.get(`${API_BASE}/categories`, function (data) {
         const list = $('#subCategoriesNav');
         list.empty();
-        
-        // Add "All" pill
-        const isAllActive = !new URLSearchParams(window.location.search).get('category_id') && !new URLSearchParams(window.location.search).get('query');
-        const allBtn = $(`
-            <a href="results.html" class="btn ${isAllActive ? 'btn-primary text-white' : 'bg-white text-dark border'} rounded-pill mx-1" style="white-space: nowrap; font-size: 14px;">All Results</a>
-        `);
-        list.append(allBtn);
 
         data.forEach(cat => {
             const isActive = new URLSearchParams(window.location.search).get('category_id') == cat.id;
@@ -114,6 +117,14 @@ function loadSubNavCategories() {
  * voice transcription handling with MediaRecorder, and triggering the camera inference hub.
  */
 function setupIndexEvents() {
+    // Check if we came from results page redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.get('action') === 'voice') {
+        setTimeout(() => $('#voiceSearchBtn').click(), 300);
+    } else if(urlParams.get('action') === 'camera') {
+        setTimeout(() => $('#cameraSearchBtn').click(), 300);
+    }
+
     // Voice STT Search
     let mediaRecorder;
     let audioChunks = [];
@@ -359,7 +370,7 @@ function renderProducts(products) {
                         <div class="d-flex gap-1 mt-1">
                             <button class="btn btn-primary flex-fill add-cart-btn fw-bold d-flex align-items-center justify-content-center gap-1 product-action-btn"  
                                 data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
-                                <i class="icon icon-add btn-icon-white"></i> Add
+                                <i class="icon icon-add btn-icon-white"></i> Add to cart
                             </button>
                             <button class="btn btn-outline-secondary dir-btn product-route-btn" data-id="${p.id}" data-x="${p.x}" data-y="${p.y}" title="Navigate Here">
                                 <i class="icon icon-my-location btn-icon-blue"></i>
@@ -373,11 +384,11 @@ function renderProducts(products) {
     });
 
     // Event Listeners for new buttons
-    $('.add-cart-btn').click(function() {
+    $('.add-cart-btn').click(function(e) {
         addToCart($(this).data('id'), $(this).data('name'), parseFloat($(this).data('price')));
     });
 
-    $('.dir-btn').click(function() {
+    $('.dir-btn').click(function(e) {
         // Clear background colors from any previous route choices visually
         $('.product-card').css('background-color', '');
         // Shade the specifically chosen product card for excellent UX clarity!
@@ -385,6 +396,12 @@ function renderProducts(products) {
         
         startRouting($(this).data('id'), $(this).data('x'), $(this).data('y'));
     });
+
+    $('.product-card').click(function(e) {
+        if ($(e.target).closest('.add-cart-btn').length === 0 && $(e.target).closest('.dir-btn').length === 0) {
+            $(this).find('.dir-btn').click();
+        }
+    }).css('cursor', 'pointer');
 }
 
 
@@ -428,8 +445,10 @@ function drawShelves(shelves) {
     });
 }
 
+let currentSseSource = null;
+
 function startRouting(productId, targetX, targetY) {
-    if (routingInterval) clearInterval(routingInterval);
+    stopRouting(); // Kill any existing stream
     
     currentTargetId = productId;
     
@@ -439,47 +458,72 @@ function startRouting(productId, targetX, targetY) {
     pin.setAttribute("cy", targetY);
     pin.setAttribute("class", ""); // remove d-none
 
-    // Run immediately, then query every 500ms to perfectly sync with the 0.5s linear SVG CSS layout transition
-    fetchAndDrawRoute();
-    routingInterval = setInterval(fetchAndDrawRoute, 500);
+    // Initialize Server-Sent Events stream
+    const url = `${API_BASE}/get-route?product_id=${productId}`;
+    currentSseSource = new EventSource(url);
+
+    currentSseSource.onmessage = function(event) {
+        const resp = JSON.parse(event.data);
+        
+        if(resp.error) {
+            console.warn("Routing Error:", resp.error);
+            return;
+        }
+
+        if (resp.path && resp.path.length > 0) {
+            // Update Path Polyline
+            const pointString = resp.path.map(p => `${p[0]},${p[1]}`).join(" ");
+            document.getElementById('svgRoute').setAttribute('points', pointString);
+            
+            // Update User Cart Icon position (using Cart Marker Group)
+            if(resp.start) {
+                const cx = resp.start[0];
+                const cy = resp.start[1];
+                const heading = resp.heading || 0.0;
+                
+                const cm = document.getElementById('cartMarker');
+                // Applies right-to-left: Rotates the graphic around its local origin, then translates to absolute coordinates
+                cm.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${heading})`);
+                
+                // Reset/Fix the Main Map Layer strictly to its standard absolute layout
+                const mapLayer = document.getElementById('map-layer');
+                mapLayer.setAttribute('transform', '');
+            }
+        }
+    };
+
+    currentSseSource.onerror = function(err) {
+        console.warn("SSE connection lost or failed.", err);
+    };
+
+    // dynamically add the Stop Button to UI if it doesn't exist
+    if ($('#stopRoutingBtn').length === 0) {
+        $('.map-container').append(`
+            <button id="stopRoutingBtn" class="btn btn-danger position-absolute shadow fw-bold rounded-pill" style="top: 20px; right: 20px; z-index: 1000;" onclick="stopRouting()">
+                Stop Directions
+            </button>
+        `);
+    } else {
+        $('#stopRoutingBtn').show();
+    }
 }
 
-function fetchAndDrawRoute() {
-    // Actually in Trollexa, the Pi pushes RSSI to /api/update-location constantly.
-    // For this frontend demo, we assume the backend live_state is updated.
-    
-    $.ajax({
-        url: `${API_BASE}/get-route`,
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ product_id: currentTargetId }),
-        success: function(resp) {
-            if (resp.path && resp.path.length > 0) {
-                // Update Path Polyline
-                const pointString = resp.path.map(p => `${p[0]},${p[1]}`).join(" ");
-                document.getElementById('svgRoute').setAttribute('points', pointString);
-                
-                // Update User Cart Icon position (using Cart Marker Group)
-                if(resp.start) {
-                    const cx = resp.start[0];
-                    const cy = resp.start[1];
-                    const heading = resp.heading || 0.0;
-                    
-                    const cm = document.getElementById('cartMarker');
-                    // Applies right-to-left: Rotates the graphic around its local origin, then translates to absolute coordinates
-                    cm.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${heading})`);
-                    
-                    // Reset/Fix the Main Map Layer strictly to its standard absolute layout
-                    const mapLayer = document.getElementById('map-layer');
-                    mapLayer.setAttribute('transform', '');
-                }
-            }
-        },
-        error: function(err) {
-            console.warn("Routing error (Obstacle block or backend down)", err);
-        }
-    });
+function stopRouting() {
+    if (currentSseSource) {
+        currentSseSource.close();
+        currentSseSource = null;
+    }
+    $('#stopRoutingBtn').hide();
+    const pin = document.getElementById('targetPin');
+    if (pin) pin.setAttribute("class", "d-none"); // hide target
+    const route = document.getElementById('svgRoute');
+    if (route) route.setAttribute('points', ''); // hide path
 }
+
+// Stop stream gracefully when changing pages
+$(window).on('beforeunload', function() {
+    stopRouting();
+});
 
 
 // ==========================================
@@ -504,6 +548,14 @@ function addToCart(id, name, price) {
         cart.push({ id, name, price, qty: 1 });
     }
     saveCart(cart);
+
+    // Show Auto-disappearing Toast
+    const toast = $(`<div class="badge bg-success shadow p-3 fs-6 rounded-pill my-1" style="display: none;">Added ${name} to cart!</div>`);
+    $('#toastContainer').append(toast);
+    toast.fadeIn(200);
+    setTimeout(() => {
+        toast.fadeOut(300, function() { $(this).remove(); });
+    }, 2000);
 }
 
 function updateCartUI() {
@@ -526,7 +578,7 @@ function updateCartUI() {
                     <div>
                         <h6 class="my-0">${item.name} <span class="badge bg-secondary">x${item.qty}</span></h6>
                     </div>
-                    <span class="text-muted">$${(item.price * item.qty).toFixed(2)}</span>
+                    <span class="text-muted">${(item.price * item.qty).toFixed(2)} AED</span>
                 </li>
             `);
         });
@@ -543,17 +595,32 @@ $('#checkoutBtn').click(function() {
 
     // Clear cart
     localStorage.removeItem('trollexa_cart');
-    updateCartUI();
     
     // UI Animation
-    const modalBody = $('.modal-body');
-    modalBody.html(`
-        <div class="text-center payment-success-anim py-5">
-            <h1 class="text-success mb-3">✅</h1>
-            <h3 class="fw-bold">Payment Successful</h3>
-            <p class="text-muted">Thank you for shopping at Trollexa!</p>
-        </div>
-    `);
-    
+    $('#cartItemList').hide();
+    $('#cartTotalSum').parent().hide(); // Hide the h4 Total
     $('#checkoutBtn').hide();
+    
+    const modalBody = $('#cartModal .modal-body');
+    let successMsg = $('#cartCheckoutSuccessMsg');
+    if (successMsg.length === 0) {
+        successMsg = $(`
+            <div id="cartCheckoutSuccessMsg" class="text-center payment-success-anim py-5">
+                <h1 class="text-success mb-3"><img src="icons/check.svg" style="width: 48px; height: 48px;"></h1>
+                <h3 class="fw-bold">Payment Successful</h3>
+                <p class="text-muted">Thank you for shopping at Trollexa!</p>
+            </div>
+        `);
+        modalBody.append(successMsg);
+    }
+    successMsg.show();
+});
+
+// Restore modal default state when it is forcefully closed
+$('#cartModal').on('hidden.bs.modal', function () {
+    $('#cartCheckoutSuccessMsg').hide();
+    $('#cartItemList').show();
+    $('#cartTotalSum').parent().show();
+    $('#checkoutBtn').show();
+    updateCartUI();
 });

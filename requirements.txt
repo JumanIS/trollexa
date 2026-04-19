@@ -1,6 +1,8 @@
 numpy
 flask
 flask-cors
+bleak
+asyncio
 
 # YOLO
 ultralytics>=8.2.0

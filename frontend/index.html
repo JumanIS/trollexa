@@ -14,10 +14,13 @@
     <!-- Top Nav -->
     <div class="top-nav d-flex justify-content-between align-items-center">
         <a href="index.html" class="trollexa-logo"><img src="images/logo.png" alt="Trollexa" class="logo-nav"></a>
-        <button class="btn bg-white position-relative rounded px-3 py-1 d-flex align-items-center gap-2 top-nav-cart-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
-            <i class="icon icon-cart"></i>
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <a href="manager.html" class="btn bg-white rounded px-3 py-1 fw-bold text-primary border" id="adminToolLinkIndex">Admin</a>
+            <button class="btn bg-white position-relative rounded px-3 py-1 d-flex align-items-center gap-2 top-nav-cart-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
+                <i class="icon icon-cart"></i>
+                <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
+            </button>
+        </div>
     </div>
 
     <!-- Main Content -->
@@ -139,7 +142,7 @@
                 </div>
                 <div class="modal-body">
                     <ul class="list-group list-group-flush" id="cartItemList"></ul>
-                    <h4 class="mt-4 text-end fw-bold text-primary">Total: AED <span id="cartTotalSum">0.00</span></h4>
+                    <h4 class="mt-4 text-end fw-bold text-primary">Total: <span id="cartTotalSum">0.00</span> AED</h4>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>

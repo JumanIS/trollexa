@@ -2,6 +2,8 @@
 .idea/
 models/
 venv/
+__pycache__/
 *.md
 temp_voice.wav
 trollexa.db
+locale.py
