@@ -476,21 +476,22 @@ import subprocess
 
 def launch_kiosk():
     url = "http://localhost:5000/"
+    # Create a copy of the current system environment variables
+    env = os.environ.copy()
+    
+    # Force the browser to open on the physical monitor connected to the Pi
+    env["DISPLAY"] = ":0" 
+    
     try:
-        # 'x-www-browser' is a symlink to the default browser on Raspberry Pi
-        subprocess.Popen(['x-www-browser', '--kiosk', url])
+        # Use the path discovered by your 'which' command
+        browser_path = '/usr/bin/x-www-browser'
+        
+        # Launch in Kiosk mode with the assigned display environment
+        subprocess.Popen([browser_path, '--kiosk', url], env=env)
+        print(f"Kiosk launched on {browser_path}")
+        
     except Exception as e:
         print(f"Could not launch browser: {e}")
-
-if __name__ == '__main__':
-    # Fire up background BLE scanner routine
-    threading.Thread(target=start_ble_scanner, daemon=True).start()
-    
-    # Automatically open local browser in Kiosk mode
-    threading.Timer(1.5, launch_kiosk).start()
-    
-    # Running offline mode for Trollexa API Hub
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 
 # if __name__ == '__main__':
