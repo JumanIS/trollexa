@@ -475,22 +475,10 @@ import platform
 import subprocess
 
 def launch_kiosk():
-    current_os = platform.system()
     url = "http://localhost:5000/"
-    
     try:
-        if current_os == "Windows":
-            # On Windows, we use 'start' or the direct path to Chrome
-            # Kiosk mode works in Chrome on Windows too!
-            subprocess.Popen(['start', 'chrome', '--kiosk', url], shell=True)
-        elif current_os == "Linux":
-            # This is for your Raspberry Pi 5
-            subprocess.Popen(['chromium-browser', '--kiosk', url])
-        else:
-            # Fallback for other systems (like macOS)
-            import webbrowser
-            webbrowser.open(url)
-            
+        # 'x-www-browser' is a symlink to the default browser on Raspberry Pi
+        subprocess.Popen(['x-www-browser', '--kiosk', url])
     except Exception as e:
         print(f"Could not launch browser: {e}")
 
