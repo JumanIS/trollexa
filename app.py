@@ -471,24 +471,28 @@ def get_route():
 
     return Response(generate(), mimetype='text/event-stream')
 
+import platform
 import subprocess
 
 def launch_kiosk():
-    # Launches Chromium in full-screen kiosk mode on the Pi
+    current_os = platform.system()
+    url = "http://localhost:5000/"
+    
     try:
-        subprocess.Popen(['chromium-browser', '--kiosk', 'http://localhost:5000/'])
+        if current_os == "Windows":
+            # On Windows, we use 'start' or the direct path to Chrome
+            # Kiosk mode works in Chrome on Windows too!
+            subprocess.Popen(['start', 'chrome', '--kiosk', url], shell=True)
+        elif current_os == "Linux":
+            # This is for your Raspberry Pi 5
+            subprocess.Popen(['chromium-browser', '--kiosk', url])
+        else:
+            # Fallback for other systems (like macOS)
+            import webbrowser
+            webbrowser.open(url)
+            
     except Exception as e:
         print(f"Could not launch browser: {e}")
-
-if __name__ == '__main__':
-    # Fire up background BLE scanner routine
-    threading.Thread(target=start_ble_scanner, daemon=True).start()
-    
-    # Automatically open local browser in Kiosk mode
-    threading.Timer(1.5, launch_kiosk).start()
-    
-    # Running offline mode for Trollexa API Hub
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 
 # if __name__ == '__main__':
