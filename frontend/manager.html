@@ -302,24 +302,25 @@
                     group.appendChild(rect);
                     group.appendChild(text);
                     
-                    // Add SVG Trash Icon directly to the top-right corner of the selected shelf
+                    // Add SVG Trash Icon directly to the top‑right corner of the selected shelf
                     if (selectedShelfIndex === i) {
                         let trash = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                        // Standard attribute (modern browsers)
                         trash.setAttribute('href', 'icons/trash.svg');
-                        // Position slightly inside the shelf's top-right
-                        trash.setAttribute('x', s.x + s.w - 0.3);
-                        trash.setAttribute('y', s.y + 0.05);
-                        trash.setAttribute('width', '0.25');
-                        trash.setAttribute('height', '0.25');
+                        // XLink attribute (fallback for older SVG implementations)
+                        trash.setAttributeNS('http://www.w3.org/1999/xlink', 'href', 'icons/trash.svg');
+                        // Position slightly inside the shelf's top‑right
+                        trash.setAttribute('x', s.x + s.w - 0.5);
+                        trash.setAttribute('y', s.y + 0);
+                        trash.setAttribute('width', '0.5');
+                        trash.setAttribute('height', '0.5');
                         trash.setAttribute('cursor', 'pointer');
                         trash.setAttribute('class', 'shelf-trash');
-                        
                         // Delete click handler
-                        trash.addEventListener('mousedown', function(e) {
+                        trash.addEventListener('mousedown', function (e) {
                             e.stopPropagation(); // Avoid triggering drag or background
                             deleteSelectedShelf();
                         });
-                        
                         group.appendChild(trash);
                     }
                 });
