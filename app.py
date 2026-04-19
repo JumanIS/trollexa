@@ -471,7 +471,6 @@ def get_route():
 
     return Response(generate(), mimetype='text/event-stream')
 
-import platform
 import subprocess
 
 def launch_kiosk():
@@ -492,6 +491,16 @@ def launch_kiosk():
         
     except Exception as e:
         print(f"Could not launch browser: {e}")
+
+if __name__ == '__main__':
+    # Fire up background BLE scanner routine
+    threading.Thread(target=start_ble_scanner, daemon=True).start()
+    
+    # Automatically open local browser in Kiosk mode
+    threading.Timer(1.5, launch_kiosk).start()
+    
+    # Running offline mode for Trollexa API Hub
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 
 # if __name__ == '__main__':
